@@ -4,7 +4,23 @@ import authConfig from '../../config/auth';
 import User from '../models/User';
 
 class AccountController {
-  async store(req, res) {
+  async create(req, res) {
+    const userExists = await User.findOne({ where: { email: req.body.email } });
+
+    if (userExists) {
+      return res.status(400).json({ message: 'User already exists.' });
+    }
+
+    const { id, name, email } = await User.create(req.body);
+
+    return res.json({
+      id,
+      name,
+      email,
+    });
+  }
+
+  async login(req, res) {
     const { email, password } = req.body;
 
     const user = await User.findOne({ where: { email } });
@@ -28,7 +44,27 @@ class AccountController {
   }
 
   async update(req, res) {
-    return res.json({ ok: true });
+    const { email, currentPassword } = req.body;
+
+    const user = await User.findByPk(req.userId);
+
+    if (email != user.email) {
+      const userExists = await User.findOne({
+        where: { email },
+      });
+
+      if (userExists) {
+        return res.status(400).json({ message: 'User already exists.' });
+      }
+    }
+
+    if (currentPassword && !(await user.checkPassword(currentPassword))) {
+      return res.status(401).json({ message: 'Password does not match' });
+    }
+
+    await user.update(req.body);
+
+    return res.status(204).json();
   }
 }
 
